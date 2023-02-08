@@ -6,4 +6,5 @@ interface ClickInterface {
     fun editClick(menuModel: MenuModel,position:Int)
     fun deleteClick(menuModel: MenuModel,position: Int)
 
+
 }

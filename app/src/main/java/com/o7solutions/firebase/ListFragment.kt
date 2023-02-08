@@ -7,23 +7,15 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.database.*
 import com.o7solutions.ClickInterface
 import com.o7solutions.adapter.MenuAdapter
 import com.o7solutions.firebase.databinding.DialogAddUpdateMenuBinding
 import com.o7solutions.firebase.databinding.FragmentListBinding
 import com.o7solutions.firebase.model.MenuModel
-import java.util.*
-import kotlin.collections.ArrayList
-
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_PARAM1 = "param1"
@@ -38,11 +30,8 @@ class ListFragment : Fragment(), ClickInterface {
 
     lateinit var binding: FragmentListBinding
     lateinit var mainActivity: MainActivity
-    lateinit var fcbAdd: FloatingActionButton
     lateinit var menuAdapter: MenuAdapter
     lateinit var dbReference: DatabaseReference
-    lateinit var tvText: TextView
-    lateinit var recyclerView: RecyclerView
     var userList=ArrayList<MenuModel>()
     private var param1: String? = null
     private var param2: String? = null
@@ -60,15 +49,32 @@ class ListFragment : Fragment(), ClickInterface {
                 menuModel?.id = snapshot.key
                 if (menuModel != null) {
                     userList.add(menuModel)
-                }
                     menuAdapter.notifyDataSetChanged()
+                }
                 Log.e(TAG,"menu model ${menuModel?.name}")
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
                 Log.e(TAG," on child changed")
+                val menuModel:MenuModel?= snapshot.getValue(MenuModel::class.java)
+                menuModel?.id=snapshot.key
+                if (menuModel!=null) {
+                    userList.forEachIndexed { index, menuModelData ->
+                        if(menuModelData.id == menuModel.id) {
+                            userList[index] = menuModel
+                            return@forEachIndexed
+                        }
+                    }
+                    menuAdapter.notifyDataSetChanged()
+                }
             }
-            override fun onChildRemoved(snapshot: DataSnapshot){
+            override fun onChildRemoved(snapshot: DataSnapshot) {
                 Log.e(TAG," on child removed")
+                val menuModel:MenuModel?= snapshot.getValue(MenuModel::class.java)
+                menuModel?.id=snapshot.key
+                if(menuModel!=null){
+                    userList.remove(menuModel)
+                    menuAdapter.notifyDataSetChanged()
+                }
             }
             override fun onChildMoved(snapshot: DataSnapshot,previousChildName: String?) {
                 Log.e(TAG," on child moved")
@@ -81,28 +87,20 @@ class ListFragment : Fragment(), ClickInterface {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_list, container, false)
-        recyclerView = view.findViewById(R.id.recyclerView)
+        binding= FragmentListBinding.inflate(layoutInflater)
         menuAdapter = MenuAdapter(userList,this)
-        recyclerView.layoutManager = LinearLayoutManager(mainActivity)
-        recyclerView.adapter=menuAdapter
-
-
-        fcbAdd = view.findViewById(R.id.fcbAdd)
-        fcbAdd.setOnClickListener {
+       binding.recyclerView.layoutManager = LinearLayoutManager(mainActivity)
+        binding.recyclerView.adapter=menuAdapter
+        binding.fcbAdd.setOnClickListener {
             val binding = DialogAddUpdateMenuBinding.inflate(layoutInflater)
             val addDialog = Dialog(mainActivity)
             addDialog.setContentView(binding.root)
-            binding.etMenuName= v.findViewById(R.id.etMenuName)
-            etMenuPrice = v.findViewById(R.id.etMenuPrice)
-            btnAdd = v.findViewById(R.id.btnAdd)
-            btnCancel = v.findViewById(R.id.btnCancel)
-            btnAdd.setOnClickListener {
-                val menuData = MenuModel(etMenuName.text.toString(), etMenuPrice.text.toString())
-                if (etMenuName.text.isEmpty()) {
-                    etMenuName.setError("Enter Name")
-                } else if (etMenuPrice.text.isEmpty()) {
-                    etMenuPrice.setError("Enter Price")
+           binding.btnAdd.setOnClickListener {
+                val menuData = MenuModel("",binding.etMenuName.text.toString(), binding.etMenuPrice.text.toString())
+                if (binding.etMenuName.text.isEmpty()) {
+                    binding.etMenuName.setError("Enter Name")
+                } else if (binding.etMenuPrice.text.isEmpty()) {
+                    binding.etMenuPrice.setError("Enter Price")
                 } else {
                     dbReference.push().setValue(menuData)
                         .addOnCompleteListener {
@@ -113,14 +111,14 @@ class ListFragment : Fragment(), ClickInterface {
                     addDialog.dismiss()
                 }
             }
-            btnCancel.setOnClickListener {
+            binding.btnCancel.setOnClickListener {
                 addDialog.dismiss()
                 Toast.makeText(mainActivity, "Cancel", Toast.LENGTH_SHORT).show()
             }
             addDialog.create()
             addDialog.show()
         }
-      return view
+      return binding.root
     }
     companion object {
         /**
@@ -144,50 +142,40 @@ class ListFragment : Fragment(), ClickInterface {
     override fun editClick(menuModel: MenuModel, position: Int) {
         val binding = DialogAddUpdateMenuBinding.inflate(layoutInflater)
         val editDialog = Dialog(mainActivity)
-        etMenuName = v.findViewById<EditText>(R.id.etMenuName)
-        etMenuPrice = v.findViewById(R.id.etMenuPrice)
-        btnAdd = v.findViewById(R.id.btnAdd)
-        tvText = v.findViewById(R.id.tvText)
-        btnCancel = v.findViewById(R.id.btnCancel)
-        etMenuName.setText(menuModel.name)
-        etMenuPrice.setText(menuModel.price)
-        tvText.setText("Update Item")
-
-        btnAdd.setText("Update")
-
-        btnAdd.setOnClickListener {
-            val menuData = MenuModel(etMenuName.text.toString(), etMenuPrice.text.toString())
-            if (etMenuName.text.isEmpty()) {
-                etMenuName.setError("Enter Name")
-            } else if (etMenuPrice.text.isEmpty()) {
-                etMenuPrice.setError("Enter Price")
+        binding.tvText.setText("Update Item")
+        binding.btnAdd.setText("Update")
+        binding.etMenuName.setText(menuModel.name)
+        binding.etMenuPrice.setText(menuModel.price)
+        editDialog.setContentView(binding.root)
+        editDialog.create()
+        editDialog.show()
+        binding.btnAdd.setOnClickListener {
+            if (binding.etMenuName.text.isEmpty()) {
+                binding.etMenuName.setError("Enter Name")
+            } else if (binding.etMenuPrice.text.isEmpty()) {
+                binding.etMenuPrice.setError("Enter Price")
             } else {
                 val key = menuModel.id
-                val post = MenuModel("", etMenuName.text.toString(), etMenuPrice.text.toString())
+                val post = MenuModel("",binding.etMenuName.text.toString(), binding.etMenuPrice.text.toString())
                 val postValues = post.toMap()
-
                 val childUpdates = hashMapOf<String, Any>(
                     "$key" to postValues,
                 )
-
                 dbReference.updateChildren(childUpdates)
                 editDialog.dismiss()
             }
-            }
-            btnCancel.setOnClickListener {
+        }
+            binding.btnCancel.setOnClickListener {
                 editDialog.dismiss()
                 Toast.makeText(mainActivity, "Cancel", Toast.LENGTH_SHORT).show()
             }
-        editDialog.show()
         }
-
     override fun deleteClick(menuModel: MenuModel, position: Int) {
         val dialog= AlertDialog.Builder(context)
         dialog.setTitle("Delete")
         dialog.setMessage("Are you sure...")
         dialog.setPositiveButton("Yes"){addDialog, _ ->
             dbReference.child(menuModel.id ?: "").removeValue()
-            addDialog.dismiss()
         }
         dialog.setNegativeButton("No"){addDialog, _ ->
             addDialog.dismiss()
@@ -195,7 +183,7 @@ class ListFragment : Fragment(), ClickInterface {
         dialog.create()
         dialog.show()
         }
-    }
+}
 
 
 
